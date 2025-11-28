@@ -1,72 +1,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <ctype.h>
+#include "../headers/crypto.h"
 
-// Função para realizar a cifra de deslocamento
-void preparar_dados_grupo4() {
-    // Definição dos arquivos
-    // Grupo 4 usa o arquivo Cerydra.txt
-    const char *NOME_ARQUIVO_ENTRADA = "entradas/Cerydra.txt";
-    const char *NOME_ARQUIVO_SAIDA = "saidas/texto_criptografado.txt";
+int main(void) {
+    srand((unsigned int) time(NULL));
+    init_criptoanalise();
+
+    printf("=== TP3 - Criptoanalise (Modular) ===\n");
     
-    FILE *entrada, *saida;
-    int ch;
-    int shift;
+    /* Etapa de Cifragem Opcional */
+    encrypt_plaintext_step();
 
-    // Inicializa o gerador de números aleatórios
-    srand(time(NULL));
+    char filename[256];
+    printf("\nArquivo cifrado para analisar (ex: Cerydra_Cifrado.txt): ");
+    read_line(filename, sizeof(filename));
+    
+    if (!load_cipher_text(filename)) return 1;
 
-    // Gera um shift aleatório entre 1 e 25 (evita 0 pois não criptografaria nada)
-    // Fonte 32: "usando um número aleatório x"
-    shift = (rand() % 25) + 1; 
-
-    // Abre o arquivo de entrada
-    entrada = fopen(NOME_ARQUIVO_ENTRADA, "r");
-    if (entrada == NULL) {
-        printf("Erro: Nao foi possivel abrir o arquivo '%s'.\n", NOME_ARQUIVO_ENTRADA);
-        exit(1);
-    }
-
-    // Abre o arquivo de saída
-    saida = fopen(NOME_ARQUIVO_SAIDA, "w");
-    if (saida == NULL) {
-        printf("Erro: Nao foi possivel criar o arquivo de saida.\n");
-        fclose(entrada);
-        exit(1);
-    }
-
-    printf("=== Preparacao de Dados (Grupo 4) ===\n");
-    printf("Lendo: %s\n", NOME_ARQUIVO_ENTRADA);
-    printf("Shift aleatorio gerado: %d\n", shift);
-
-    // Loop de leitura e criptografia
-    while ((ch = fgetc(entrada)) != EOF) {
+    while (1) {
+        int opcao;
+        printf("\n=== MENU ===\n");
+        printf("1 - Estado atual\n2 - Analise de Frequencia\n3 - Busca Exata\n");
+        printf("4 - Busca Aproximada\n5 - Alterar Chave\n6 - Exportar e Sair\nEscolha: ");
         
-        // Verifica se é uma letra
-        if (isalpha(ch)) {
-            // Normaliza para maiúscula para facilitar a criptoanálise posterior
-            char base = isupper(ch) ? 'A' : 'a';
-            
-            // Fórmula da Cifra de César: (Letra + Shift) % 26
-            char cifrado = ((ch - base + shift) % 26) + base;
-            
-            // Converte tudo para maiúscula no arquivo final (padrão em criptoanálise clássica)
-            fputc(toupper(cifrado), saida);
-        } else {
-            fputc(ch, saida);
+        if (scanf("%d", &opcao) != 1) {
+            printf("Opcao invalida.\n");
+            flush_input();
+            continue;
+        }
+        flush_input();
+
+        switch (opcao) {
+            case 1: show_state(); break;
+            case 2: frequency_analysis_menu(); break;
+            case 3: kmp_search_interactive(); break;
+            case 4: approx_search_interactive(); break;
+            case 5: alter_key_interactive(); break;
+            case 6: export_and_exit(); break;
+            default: printf("Invalido.\n");
         }
     }
-
-    printf("Sucesso! Arquivo '%s' gerado.\n", NOME_ARQUIVO_SAIDA);
-    printf("Voce deve usar este arquivo gerado para testar as funcoes de quebra de senha.\n");
-
-    // Fecha os arquivos
-    fclose(entrada);
-    fclose(saida);
-}
-
-int main() {
-    preparar_dados_grupo4();
     return 0;
 }
