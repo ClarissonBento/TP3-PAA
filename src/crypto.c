@@ -277,51 +277,100 @@ static void build_lps(const char *pat, int m, int *lps) {
 }
 
 void kmp_search_interactive(void) {
+    char raw[256];
     char pattern[256];
+
     printf("\n[3] Busca Exata (KMP)\nPadrao: ");
-    read_line(pattern, sizeof(pattern));
-    int m = strlen(pattern);
-    if(m==0) return;
-    for(int i=0; i<m; i++) pattern[i] = toupper(pattern[i]);
+    read_line(raw, sizeof(raw));
+
+    int m = 0;
+    for (int i = 0; raw[i] != '\0'; i++) {
+        unsigned char c = (unsigned char)raw[i];
+        if (isalpha(c)) {
+            if (m < (int)sizeof(pattern) - 1)
+                pattern[m++] = (char)toupper(c);
+        } else if (!isspace(c)) {
+            printf("Padrao invalido: use apenas letras.\n");
+            return;
+        }
+    }
+    if (m == 0) {
+        printf("Padrao vazio.\n");
+        return;
+    }
+    pattern[m] = '\0';
 
     int *lps = malloc(m * sizeof(int));
+    if (!lps) {
+        printf("Erro de memoria.\n");
+        return;
+    }
+
     build_lps(pattern, m, lps);
 
-    int i=0, j=0, count=0;
+    int i = 0, j = 0, count = 0;
     printf("Posicoes: ");
     while (i < cipherLen) {
-        if (pattern[j] == cipherText[i]) { i++; j++; }
+        if (pattern[j] == cipherText[i]) {
+            i++;
+            j++;
+        }
         if (j == m) {
-            printf("%d ", i - j); count++; j = lps[j - 1];
+            printf("%d ", i - j);
+            count++;
+            j = lps[j - 1];
         } else if (i < cipherLen && pattern[j] != cipherText[i]) {
-            if (j != 0) j = lps[j - 1]; else i++;
+            if (j != 0) j = lps[j - 1];
+            else i++;
         }
     }
     printf("\nTotal: %d\n", count);
     free(lps);
 }
 
+
 void approx_search_interactive(void) {
     typedef unsigned long long Word;
+    char raw[256];
     char pattern[128];
     int k;
     
     update_partial_text();
     printf("\n[4] Busca Shift-And\nPadrao: ");
-    read_line(pattern, sizeof(pattern));
-    int m = strlen(pattern);
-    if (m == 0 || m > 63) { printf("Erro: Padrao invalido.\n"); return; }
-    for(int i=0; i<m; i++) pattern[i] = toupper(pattern[i]);
+    read_line(raw, sizeof(raw));
+
+    int m = 0;
+    for (int i = 0; raw[i] != '\0'; i++) {
+        unsigned char c = (unsigned char)raw[i];
+        if (isalpha(c)) {
+            if (m < (int)sizeof(pattern) - 1)
+                pattern[m++] = (char)toupper(c);
+        } else if (!isspace(c)) {
+            printf("Padrao invalido: use apenas letras.\n");
+            return;
+        }
+    }
+    if (m == 0 || m > 63) {
+        printf("Padrao invalido.\n");
+        return;
+    }
+    pattern[m] = '\0';
 
     printf("Tolerancia: ");
-    if(scanf("%d", &k) != 1) k=0;
+    if (scanf("%d", &k) != 1) {
+        printf("Entrada de tolerancia invalida.\n");
+        flush_input();
+        return;
+    }
     flush_input();
+    if (k < 0) k = 0;
+    if (k > m) k = m;
 
     Word *R = malloc((k + 1) * sizeof(Word));
     Word mask[256];
-    for(int i=0; i<=k; i++) R[i] = ~1ULL;
-    for(int i=0; i<256; i++) mask[i] = ~0ULL;
-    for(int i=0; i<m; i++) mask[(unsigned char)pattern[i]] &= ~(1ULL << i);
+    for (int i = 0; i <= k; i++) R[i] = ~1ULL;
+    for (int i = 0; i < 256; i++) mask[i] = ~0ULL;
+    for (int i = 0; i < m; i++) mask[(unsigned char)pattern[i]] &= ~(1ULL << i);
 
     int count = 0;
     printf("Ocorrencias:\n");
@@ -337,10 +386,16 @@ void approx_search_interactive(void) {
             prev = tmp;
         }
 
-        if (0 == (R[k] & (1ULL << m))) {
+        if (0 == (R[k] & (1ULL << (m - 1)))) {
             int start = i - m + 1;
+            if (start < 0) continue;
+            int len_print = m;
+            if (len_print > 120) len_print = 120;
+            if (start + len_print > cipherLen) len_print = cipherLen - start;
+            if (len_print <= 0) continue;
+
             char occ[128];
-            int len_print = (m > 120) ? 120 : m;
+            if (len_print >= (int)sizeof(occ)) len_print = (int)sizeof(occ) - 1;
             strncpy(occ, partialText + start, len_print);
             occ[len_print] = '\0';
             printf("  Pos %d: %s\n", start, occ);
